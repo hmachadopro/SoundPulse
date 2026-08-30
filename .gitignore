@@ -1,0 +1,34 @@
+# Secrets
+.env
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars
+
+# Airflow
+airflow/logs/
+airflow/plugins/__pycache__/
+airflow/airflow.cfg
+airflow/airflow.db
+
+# Data (jamais commité, seulement dans S3)
+data/raw/
+data/staging/
+data/curated/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

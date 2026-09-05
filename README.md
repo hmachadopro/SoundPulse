@@ -73,7 +73,7 @@ cd .. && docker compose up -d
 Voir le planning prévisionnel du cahier des charges (section 9) et le suivi dans le wiki. Ce repo est un squelette de départ (phase 1 — cadrage) : structure posée, infra Terraform de base, DAG et jobs Glue en stub à compléter au fil des phases 2 à 7.
 
 - [x] Phase 1 — Cadrage : repo, structure, Terraform de base
-- [ ] Phase 2 — Ingestion : script d'extraction Spotify + zone raw S3
+- [x] Phase 2 — Ingestion : script d'extraction Spotify + zone raw S3
 - [ ] Phase 3 — Transformation : jobs Glue staging & curated
 - [ ] Phase 4 — Orchestration : DAG Airflow complet, retry, alertes
 - [ ] Phase 5 — Qualité & tests : contrôles automatisés

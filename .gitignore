@@ -1,6 +1,7 @@
 # Secrets
 .env
 *.pem
+.cache
 
 # Python
 __pycache__/

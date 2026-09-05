@@ -91,7 +91,26 @@ def _get_json(url: str, params: dict | None = None) -> dict:
             continue
 
         response.raise_for_status()
-        return response.json()
+        body = response.json()
+
+        # Deezer signale aussi le rate limiting (et d'autres erreurs) par un
+        # corps `{"error": {...}}` avec un statut HTTP 200 — invisible pour
+        # les branches 429/5xx ci-dessus. Constaté en pratique sous charge
+        # concurrente (deux extractions simultanées) : sans ce contrôle, un
+        # appel `/artist/{id}` en erreur renvoie un dict sans clé `id` et
+        # fait planter l'appelant avec un KeyError bien plus loin.
+        if isinstance(body, dict) and "error" in body:
+            wait = RETRY_BACKOFF_BASE_S * attempt
+            logger.warning(
+                "Erreur API Deezer sur %s : %s — nouvelle tentative dans %.1fs",
+                url,
+                body["error"],
+                wait,
+            )
+            time.sleep(wait)
+            continue
+
+        return body
 
     raise RuntimeError(f"Échec après {MAX_RETRIES} tentatives : {url}")
 

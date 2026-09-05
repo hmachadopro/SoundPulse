@@ -13,26 +13,41 @@ services:
       retries: 5
 
   airflow:
-    image: apache/airflow:2.10.4-python3.12
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    working_dir: /opt/airflow/dags
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AWS_REGION: ${AWS_REGION}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      # Permet à `python -m glue_jobs...`/`python glue_jobs/...` de résoudre
+      # les packages du projet quel que soit le cwd du process appelant.
+      PYTHONPATH: /opt/airflow/dags
     env_file: .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./src:/opt/airflow/dags/src
+      - ./glue_jobs:/opt/airflow/dags/glue_jobs
       - airflow-logs:/opt/airflow/logs
+      # Credentials AWS de l'hôte, montés en lecture seule — jamais dupliqués
+      # dans .env ni en dur dans l'image (ENF-05/sécurité).
+      - ${USERPROFILE}/.aws:/home/airflow/.aws:ro
     ports:
       - "8080:8080"
-    command: >
-      bash -c "airflow db migrate &&
-               airflow users create --username admin --password admin --firstname Hugo --lastname Machado --role Admin --email admin@example.com || true &&
-               airflow webserver & airflow scheduler"
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate
+        airflow users create --username admin --password admin --firstname Hugo --lastname Machado --role Admin --email admin@example.com || true
+        airflow webserver &
+        exec airflow scheduler
 
 volumes:
   postgres-db-volume:

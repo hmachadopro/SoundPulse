@@ -87,7 +87,7 @@ Voir le planning prévisionnel du cahier des charges (section 9) et le suivi dan
 - [x] Phase 1 — Cadrage : repo, structure, Terraform de base
 - [x] Phase 2 — Ingestion : script d'extraction Deezer + zone raw S3
 - [x] Phase 3 — Transformation : jobs Glue staging & curated
-- [ ] Phase 4 — Orchestration : DAG Airflow complet, retry, alertes
+- [x] Phase 4 — Orchestration : DAG Airflow complet, retry, alertes
 - [ ] Phase 5 — Qualité & tests : contrôles automatisés
 - [ ] Phase 6 — Restitution : modèle Power BI + dashboards
 - [ ] Phase 7 — Documentation : schéma, démo

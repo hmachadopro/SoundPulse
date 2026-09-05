@@ -20,8 +20,10 @@ contrairement à la version Spotify, `rank` est normalement bien peuplé côté
 Deezer — un échec de complétude doit stopper le job plutôt qu'être assoupli
 silencieusement.
 
-Usage :
-    python glue_jobs/curated_job.py --staging_path <chemin> --curated_path <chemin>
+Usage (depuis la racine du repo, `src/` doit être sur le PYTHONPATH — déjà
+le cas dans le conteneur Airflow via `PYTHONPATH=/opt/airflow/dags`, voir
+`docker-compose.yml`) :
+    PYTHONPATH=. python glue_jobs/curated_job.py --staging_path <chemin> --curated_path <chemin>
 """
 from __future__ import annotations
 
@@ -30,6 +32,8 @@ import logging
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
+
+from src.common.quality_checks import check_completude, check_coherence, check_unicite, check_validite
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -86,43 +90,28 @@ def build_dim_date(fait_df: DataFrame) -> DataFrame:
 def run_quality_checks(fait_df: DataFrame, dim_titre_df: DataFrame, dim_artiste_df: DataFrame) -> None:
     """Contrôles qualité section 7 du CDC (version Deezer) — bloquants.
 
-    Contrairement à la version Spotify, où `rank`/équivalent était souvent
-    absent et avait imposé d'assouplir le seuil de complétude, Deezer
-    peuple systématiquement `rank` sur les titres de chart : un échec ici
-    doit être traité comme une régression réelle, pas comme un cas attendu.
+    Délègue les règles à `src/common/quality_checks.py` (fonctions pures
+    pandas, partagées avec les tests unitaires) plutôt que de les
+    dupliquer ici : `.toPandas()` matérialise les DataFrames Spark, ce qui
+    reste acceptable au volume de ce projet portfolio (quelques milliers de
+    lignes). Contrairement à la version Spotify, où `rank`/équivalent était
+    souvent absent et avait imposé d'assouplir le seuil de complétude,
+    Deezer peuple systématiquement `rank` sur les titres de chart : un
+    échec ici doit être traité comme une régression réelle, pas comme un
+    cas attendu.
     """
-    total = fait_df.count()
-    if total == 0:
-        raise AssertionError("fait_popularite est vide — rien à valider")
+    fait_pdf = fait_df.toPandas()
+    dim_titre_pdf = dim_titre_df.toPandas()
+    dim_artiste_pdf = dim_artiste_df.toPandas()
 
-    doublons = fait_df.groupBy("id_titre", "date_snapshot").count().filter(F.col("count") > 1).count()
-    assert doublons == 0, f"{doublons} doublon(s) détecté(s) sur (id_titre, date_snapshot)"
-
-    non_nuls = fait_df.filter(F.col("score_popularite").isNotNull()).count()
-    completude = non_nuls / total
-    assert completude > 0.98, f"Complétude score_popularite insuffisante : {completude:.2%} (seuil 98%)"
-
-    scores_invalides = fait_df.filter(
-        F.col("score_popularite").isNotNull() & (F.col("score_popularite") < 0)
-    ).count()
-    assert scores_invalides == 0, f"{scores_invalides} score_popularite négatif(s)"
-
-    durees_invalides = dim_titre_df.filter(F.col("duree") <= 0).count()
-    assert durees_invalides == 0, f"{durees_invalides} durée(s) invalide(s) (<= 0)"
-
-    bpm_invalides = dim_titre_df.filter(
-        F.col("bpm").isNotNull() & ((F.col("bpm") < 0) | (F.col("bpm") > 300))
-    ).count()
-    assert bpm_invalides == 0, f"{bpm_invalides} bpm hors plage [0, 300]"
-
-    artistes_orphelins = (
-        fait_df.select("id_artiste").distinct().join(dim_artiste_df.select("id_artiste"), "id_artiste", "left_anti").count()
-    )
-    assert artistes_orphelins == 0, f"{artistes_orphelins} id_artiste de fait_popularite absent(s) de dim_artiste"
+    check_unicite(fait_pdf)
+    completude = check_completude(fait_pdf)
+    check_validite(fait_pdf, dim_titre_pdf)
+    check_coherence(fait_pdf, dim_artiste_pdf)
 
     logger.info(
         "Contrôles qualité OK — %d lignes, complétude score_popularite %.2f%%",
-        total,
+        len(fait_pdf),
         completude * 100,
     )
 

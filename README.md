@@ -54,6 +54,14 @@ SoundPulse/
 - Terraform ≥ 1.9
 - Docker + Docker Compose (pour Airflow en local)
 - Python ≥ 3.12
+- **Pour exécuter les jobs PySpark (`glue_jobs/`) en local sous Windows** :
+  Spark s'appuie sur des binaires Hadoop natifs (`winutils.exe`,
+  `hadoop.dll`) même en mode local, sans quoi l'écriture Parquet échoue.
+  Télécharger une distribution `winutils` correspondant à la version de
+  Hadoop embarquée par PySpark (ex. https://github.com/kontext-tech/winutils),
+  la placer dans un dossier type `C:\hadoop\bin\`, puis définir la variable
+  d'environnement `HADOOP_HOME` (ex. `C:\hadoop`) au niveau utilisateur ou
+  système et rouvrir le terminal pour qu'elle soit prise en compte.
 
 ## Démarrage rapide
 
@@ -78,7 +86,7 @@ Voir le planning prévisionnel du cahier des charges (section 9) et le suivi dan
 
 - [x] Phase 1 — Cadrage : repo, structure, Terraform de base
 - [x] Phase 2 — Ingestion : script d'extraction Deezer + zone raw S3
-- [ ] Phase 3 — Transformation : jobs Glue staging & curated
+- [x] Phase 3 — Transformation : jobs Glue staging & curated
 - [ ] Phase 4 — Orchestration : DAG Airflow complet, retry, alertes
 - [ ] Phase 5 — Qualité & tests : contrôles automatisés
 - [ ] Phase 6 — Restitution : modèle Power BI + dashboards
